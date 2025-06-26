@@ -1,0 +1,117 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{ifpdf}
+\usepackage{float}
+\usepackage{url}
+
+
+\title{Comparing SHAP and LIME on Real-World Tabular Classification Tasks}
+\author{Sebastian Mejia, Mauricio Monje, Aditya Dwivedi}
+\date{June 2025}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+    Machine-Learning models are becoming more common in everyday decision-making and still growing into other fields. To help understand how these models make predictions, there are tools like SHAP and LIME that are used to explain which features are most important when analyzing certain things. Even though both methods are popular, it's not always clear how they compare, especially when used on different types of models or datasets. This project explores how SHAP and LIME perform when explaining predictions from logistic regression and random forest classifiers. We'll use three datasets and look at things like which features they highlight, how consistent their explanations are, and how easy they are to interpret. So, to put it all together, our goal is to better understand the strengths and trade-offs of each method so that data scientists can make more informed choices when working with explainable AI tools. 
+\end{abstract}
+
+\section{Introduction}
+As mentioned before, MLs are playing a much bigger role in real-world decision-making, such as in finance, healthcare, and education. However, many of the most accurate machine learning models are often difficult to interpret. This has led to the rise of explainable artificial intelligence (XAI), which focuses on making model predictions more understandable to humans. Two of the most widely used XAI tools are SHAP (SHapely Additive exPlanations) and LIME (Local Interpretable Model-Agnostic Explanations). Both aim to explain individual predictions by showing which input features were most influential, but they take very different approaches. SHAP is grounded in game theory and provides consistent, globally-aware feature importance values based on Shapely values. LIME, on the other hand, creates a simple, interpretable model (like a linear regression) around each individual prediction to approximate the local decision boundary of a complex model.
+
+While both SHAP and LIME are model-agnostic and easy to apply in practice, they can produce different explanations depending on the dataset and the model used. In this report, we aim to directly compare SHAP and LIME by applying them to two different classifiers, logistic regression and random forest (a tree-based ensemble), across three real-world tabular classification datasets. We will explore how their explanations differ in terms of feature importance rankings, consistency, interpretability, and runtime performance. This comparison will help highlight the practical tradeoffs involved in choosing between these two explainability methods. But first, we'll start with viewing the research papers that provide an insight to these two explainability methods.
+
+\section{Research Papers}
+\subsection{Evaluating the Correctness of Explainable AI
+Algorithms for Classification}
+The paper addresses the challenge of evaluating explainable AI (XAI) methods by proposing a framework that generates synthetic datasets with built-in explanation ground truth. Using formal grammars (termed e-grammars), the authors create string-based datasets where each data instance is labeled as positive (POS) if a specific production rule is applied more than a predefined threshold during its generation. The key idea is that the repeated application of a production rule produces a substring that serves as the ground truth explanation for why the instance is labeled POS. Additionally, the paper introduces the concept of G-complexity—a measure inspired by Kolmogorov Complexity—that quantifies the dataset's complexity based on the number of non-trivial production rules, demonstrating that higher G-complexity negatively impacts both classification accuracy and explanation quality.
+
+Empirical evaluations using this framework compare two popular model-agnostic XAI approaches, SHAP and LIME, by employing a metric called k-accuracy, which quantifies how well the explainer’s output aligns with the ground truth explanation. The results show that SHAP consistently outperforms LIME, achieving significantly higher k-accuracy, and that improved classification accuracy correlates with better explanation performance. Overall, the paper provides a robust, quantitative method to assess the correctness of feature attributions in XAI methods, laying the groundwork for future research extensions to more complex classification tasks and broader human-centered evaluations.
+
+\subsection{A Perspective on Explainable Artificial Intelligence Methods: SHAP
+and LIME}
+This perspective paper the two methods, SHAP and LIME, with a focus on their application to tabular data in fields such as biomedicine. It outlines how SHAP leverages game theory to assign importance scores by considering every possible coalition of features, thus offering both local and global explanations, while LIME approximates complex models with local linear surrogate models to explain predictions on a per-instance basis. The paper compares the two methods on various fronts, including their computational complexity, ability to capture non-linear relationships, and their respective limitations in handling feature collinearity, which can compromise the realism and robustness of the explanations.
+
+Additionally, the authors discuss the inherent model dependency of SHAP and LIME, noting that the outcome of these methods can vary significantly with different underlying machine learning models. They highlight that SHAP’s assumption of feature independence may lead to unrealistic explanations when features are collinear, and that LIME’s localized linear approximations risk oversimplifying complex, non-linear interactions. To address these challenges, frameworks like the Normalized Movement Rate (NMR) and Modified Index Position (MIP) are proposed to assess and adjust for collinearity effects, enhancing the stability and interpretation of the generated explanations. Ultimately, the paper urges practitioners to complement XAI outputs with clear visualization and plain language interpretation so that end-users can better understand and appropriately trust the underlying predictions.
+
+\subsection{Fooling LIME and SHAP: Adversarial Attacks on Post hoc
+Explanation Methods}
+This paper exposes significant vulnerabilities in LIME and SHAP, demonstrating that they can be easily manipulated by adversaries. The authors propose a novel scaffolding framework to transform a biased classifier into an adversarial classifier that behaves normally on real input data while producing controlled, seemingly innocuous explanations on perturbed data. By exploiting the difference between in-distribution data and off-manifold synthetic perturbations (generated during explanation), the adversary can mask discriminatory biases (for instance, those based solely on sensitive attributes like race or gender) in the model’s explanations. As a result, even when the underlying classifier is heavily biased, LIME and SHAP fail to flag the true influential features, misleading end users about the model’s fairness and reliability.
+
+Experimental results on real-world datasets—including those from criminal justice (COMPAS), crime prediction (Communities and Crime), and credit scoring (German Credit)—show that the adversarial classifiers successfully shift feature importance away from sensitive attributes to uninfluential or synthetic features. The attacks prove highly effective across both explanation methods, although LIME tends to be more vulnerable than SHAP. The findings raise serious concerns about relying on perturbation-based explanation techniques in high-stakes domains, suggesting that current methods may not be robust enough to detect or reflect discriminatory behavior. This work underscores the urgent need for developing more resilient interpretability tools capable of withstanding adversarial manipulations.
+
+\subsection{Provably Stable Rankings with SHAP and LIME}
+The paper introduces novel methods to stabilize feature rankings produced by model explainability tools prone to instability because of their reliance on random sampling. In essence, the authors propose techniques that verify and ensure that the order of the top‑K most important features is correct with high statistical confidence. For SHAP, they outline a retrospective rank verification approach, using sequential hypothesis testing (via Welch’s t-test) to adaptively allocate additional samples only where needed. Two key algorithms, RankSHAP and SPRT‑SHAP, respectively focus on adaptive sample size allocation for Shapley Sampling and continuous testing for KernelSHAP, ensuring controlled Family-Wise Error Rates (FWER).
+
+In addition to their SHAP-based methods, the paper extends these ideas to LIME by introducing a stabilized version (S‑LIME) that applies hypothesis testing with multiple testing corrections to guarantee the correct ordering of features selected by LASSO-based methods. Overall, these adaptive sampling strategies not only improve computational efficiency by focusing resources on ambiguous feature rankings but also significantly enhance the reliability of model explanations in high-stakes applications.
+
+\subsection{ExplainBench: A Benchmark Framework for Local Model
+Explanations in Fairness-Critical Applications}
+ExplainBench is an open‐source framework designed to benchmark local explanation methods—such as SHAP, LIME, and counterfactual approaches—in fairness-critical applications like criminal justice, finance, and healthcare. The framework provides standardized wrappers that unify these explanation algorithms into a common interface, enabling consistent generation, visualization, and evaluation of local explanations across datasets (e.g., COMPAS, UCI Adult, LendingClub). It includes end-to-end pipelines for model training and explanation generation and supports evaluation via metrics such as fidelity (how accurately an explanation mimics the model), sparsity (the simplicity of the explanation), and stability (robustness to slight input perturbations).
+
+Moreover, ExplainBench offers a user-friendly, interactive Streamlit-based dashboard alongside reproducible Jupyter notebooks and a PyPI-packaged module, catering to both researchers and practitioners. This modular and extensible design not only helps in conducting systematic comparisons of explanation methods but also promotes transparency and accountability in AI systems deployed in high-stakes, fairness-sensitive settings.
+
+\section{Compare/Contrast and Open Questions}
+The comparison of SHAP and LIME across multiple studies highlights both complementary strengths and distinct limitations, especially in the context of tabular classification problems with real-world implications. These papers collectively examine SHAP and LIME across a variety of axes, including accuracy, robustness, interpretability, stability, and vulnerability to manipulation.
+
+\subsection{Comparative Evaluation}
+SHAP and LIME differ significantly in methodology and performance characteristics. SHAP, grounded in game theory, computes feature attributions by aggregating marginal contributions across all feature coalitions, offering both local and global explanations. In contrast, LIME fits a local linear model around the prediction, providing quick and sparse explanations limited to individual instances.
+
+\subsection{Explanation Accuracy and Fidelity}
+In controlled evaluations with known ground truth (e.g., Evaluating the Correctness of Explainable AI), SHAP consistently demonstrates higher fidelity and accuracy (k-accuracy) than LIME. SHAP's model-agnostic global view enables it to capture more complex interactions, while LIME’s local surrogates often oversimplify the model’s behavior.
+
+\subsection{Model Assumptions and Sensitivity}
+Both methods assume feature independence to some degree, which undermines their robustness in real-world datasets with high feature collinearity. A Perspective on Explainable AI Methods outlines how this can distort attributions, particularly for SHAP, which assumes additive independence across all subsets.
+
+\subsection{Robustness and Security}
+Adversarial robustness is a major concern, as shown in Fooling LIME and SHAP. Both methods can be manipulated to mask discriminatory patterns or shift feature attributions toward decoys. LIME is particularly vulnerable due to its sampling-based nature.
+
+\subsection{Stability and Consistency}
+SHAP explanations, especially KernelSHAP, can exhibit ranking instability. Provably Stable Rankings with SHAP and LIME addresses this using sequential hypothesis testing (e.g., RankSHAP, SPRT‑SHAP). LIME also benefits from stabilized extensions like S‑LIME, though it still trails SHAP in consistency.
+
+Transparency vs. Complexity
+ExplainBench demonstrates a trade-off between explanation sparsity and faithfulness. SHAP delivers highly faithful but complex attributions, while LIME’s simplicity often comes at the cost of lower fidelity. This raises questions about interpretability for non-expert users.
+
+\section{Dataset Selection}
+We analyzed three real-world tabular datasets for classification tasks. The Heart Disease dataset includes patient medical attributes to predict the presence of heart disease; we observed that higher Oldpeak values and asymptomatic chest pain strongly correlate with disease occurrence. The Student Performance dataset contains academic and behavioral data, where fewer past failures and higher study time were positively correlated with final grades; we converted the final grade (G3) into a pass/fail target for classification. The Titanic dataset includes passenger demographics to predict survival, showing that higher ticket fare and being female increased survival likelihood. For all datasets, we handled missing values, encoded categorical variables, and scaled numerical features to ensure they were ready for consistent use in model interpretation with SHAP and LIME.
+
+\section{Experimentation}
+Two baseline models were trained on the preprocessed data:
+\begin{itemize}
+    \item Logistic Regression, a linear model useful for interpretability and baseline performance.
+
+    \item Random Forest, an ensemble tree-based model known for its non-linear decision boundaries and robustness.
+
+    \item Each model was evaluated using standard classification metrics including accuracy, precision, recall, and F1-score.
+\end{itemize}
+
+After the actual baseline models are trained, we then put it through the methods to try and interpret the model behavior and then describing what the comparisons and results can be drawn from it.
+
+\section{Conclusion}
+
+\section*{Acknowledgment}
+
+\author{
+    \textbf{Sebastian Mejia} \\
+    Role: Wrote the introduction and questioning portion as to why the question is necessary to answer and what the goal would've been. From there, worked on collecting and research about the topic with multiple research papers and presented the plan on how to actually approach the experiment itself.\\
+}
+
+\author{
+    \textbf{Aditya Dwivedi} \\ 
+    Role: Collected datasets from a variety of sectors while making sure that they fit right for the variety that the methods want to be put under stress for. Afterwhich, EDA was performed to understand feature distributions, correlations, handl emissing or imbalanced data to demonstrate the type fo data we're working with. Lastly, the preprocessing section was done by the member to make sure a smooth transition for the code and model portion.\\
+}
+
+\author{
+    \textbf{Mauricio Monje}\\
+    Role: Creating and applying the XAI methods (SHAP and LIME), where SHAP gets the global and local feature importances and LIME to generate local explanations. After the results were generated, we just created an evulations and explanation on how the results affected our main question. \\
+}
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+\cite{slack2021evaluating}      
+\cite{sun2023perspective}       
+\cite{slack2020fooling}         
+\cite{goldwasser2024provably}
+\cite{mckinney2025explainbench}
+
+\end{document}
